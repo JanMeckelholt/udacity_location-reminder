@@ -77,6 +77,7 @@ class WelcomeFragment : Fragment() {
                 .createSignInIntentBuilder()
                 .setIsSmartLockEnabled(false)
                 .setAvailableProviders(providers)
+                .setLogo(R.drawable.map)
                 .build()
         )
     }

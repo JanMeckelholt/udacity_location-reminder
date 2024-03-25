@@ -1,6 +1,7 @@
 package com.udacity.project4.locationreminders.reminderslist
 
 import android.app.Application
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.udacity.project4.base.BaseViewModel
@@ -14,6 +15,16 @@ class RemindersListViewModel(
     private val dataSource: ReminderDataSource
 ) : BaseViewModel(app) {
     // list that holds the reminder data to be displayed on the UI
+
+    private var _geofenceIsActive = MutableLiveData<Boolean?>()
+    val geofenceIsActive: LiveData<Boolean?>
+        get() = _geofenceIsActive
+
+    fun setGeofenceActive(value : Boolean){
+        _geofenceIsActive.value = value
+    }
+
+
     val remindersList = MutableLiveData<List<ReminderDataItem>>()
 
     /**
