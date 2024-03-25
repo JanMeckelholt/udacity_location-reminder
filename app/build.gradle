@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace 'com.udacity.project4'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.udacity.project4"
@@ -43,6 +43,7 @@ android {
     }
     secrets {
         propertiesFileName = "secrets.properties"
+        defaultPropertiesFileName = "local.defaults.properties"
         ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
         ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
     }
@@ -117,4 +118,6 @@ dependencies {
     // Firebase
     implementation "com.firebaseui:firebase-ui-auth:$firebaseUiAuthVersion"
     implementation "com.google.firebase:firebase-auth-ktx:$firebaseAuthKtxVersion"
+
+    implementation("com.jakewharton.timber:timber:5.0.1")
 }
