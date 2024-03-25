@@ -1,10 +1,12 @@
 package com.udacity.project4.locationreminders.reminderslist
 
+import android.Manifest
 import android.annotation.TargetApi
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.*
@@ -62,7 +64,11 @@ class ReminderListFragment : BaseFragment() {
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                checkDeviceLocationSettingsAndStartGeofence(false)
+                if (foregroundAndBackgroundLocationPermissionApproved()) {
+                    checkDeviceLocationSettingsAndStartGeofence(false)
+                } else {
+                    requestForegroundAndBackgroundLocationPermissions()
+                }
             } else {
                 Snackbar.make(binding.root, R.string.permission_denied_explanation, Snackbar.LENGTH_INDEFINITE)
                     .setAction(R.string.settings) {
@@ -139,14 +145,16 @@ class ReminderListFragment : BaseFragment() {
     @TargetApi(29)
     private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
         Timber.i("checkForegroundAndBackground")
-        val foregroudLocationApproved = (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION))
-        val backgroudLocationApproved = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-        } else {
-            true
-        }
-        return foregroudLocationApproved && backgroudLocationApproved
+        return foregroundLocationApproved() && backgroundLocationApproved()
     }
+
+    private fun backgroundLocationApproved() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+    } else {
+        true
+    }
+
+    private fun foregroundLocationApproved() = (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION))
 
     private fun checkDeviceLocationSettingsAndStartGeofence(resolve: Boolean = true) {
         Timber.i("checkDeviceLocation")
@@ -185,13 +193,12 @@ class ReminderListFragment : BaseFragment() {
     private fun requestForegroundAndBackgroundLocationPermissions() {
         Timber.i("requestForegroundAndBackground")
         if (foregroundAndBackgroundLocationPermissionApproved()) return
-        var permissionArray = arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            permissionArray += android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        }
-        Timber.i("Request permissions")
-        for (permission in permissionArray) {
-            requestPermissionLauncher.launch(permission)
+        if (!foregroundLocationApproved()) {
+            Timber.i("request Foreground Permission")
+            requestPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            Timber.i("request Background Permission")
+            requestPermissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
