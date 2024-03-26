@@ -27,7 +27,10 @@
             android:text="@string/login"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            android:background="@drawable/btn_rounded_corners"
+            android:textColor="@color/white"
+            android:textSize="@dimen/text_size_large"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
