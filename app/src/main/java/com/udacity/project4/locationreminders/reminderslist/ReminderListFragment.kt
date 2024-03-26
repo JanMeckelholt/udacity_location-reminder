@@ -114,8 +114,9 @@ class ReminderListFragment : BaseFragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.logout -> {
-                AuthUI.getInstance().signOut(requireContext())
-                findNavController().navigate(R.id.reminderListFragment_to_welcomeFragment)
+                AuthUI.getInstance().signOut(requireContext()).addOnSuccessListener {
+                    findNavController().navigate(R.id.reminderListFragment_to_welcomeFragment)
+                }
             }
         }
         return super.onOptionsItemSelected(item)

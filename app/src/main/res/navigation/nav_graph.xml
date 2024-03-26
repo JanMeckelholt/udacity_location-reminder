@@ -25,7 +25,10 @@
             app:destination="@id/saveReminderFragment" />
         <action
             android:id="@+id/reminderListFragment_to_welcomeFragment"
-            app:destination="@+id/welcomeFragment"/>
+            app:destination="@+id/welcomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            />
     </fragment>
 
     <fragment
