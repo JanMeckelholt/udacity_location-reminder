@@ -65,13 +65,14 @@ class WelcomeFragment : Fragment() {
                 // User successfully signed in
                 Timber.i("Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}!")
             } else {
-                Timber.i("Sign in unsuccessful: ${result.data}")
+                Timber.i("Sign in unsuccessful: ${result.data}, ${result.resultCode}, $result")
             }
 
         }
     }
 
     private fun launchSignInFlow() {
+        Timber.i("sign In")
         activityResultLauncher.launch(
             AuthUI.getInstance()
                 .createSignInIntentBuilder()
