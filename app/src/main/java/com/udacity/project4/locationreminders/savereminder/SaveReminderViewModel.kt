@@ -1,19 +1,36 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofencingClient
+import com.google.android.gms.location.GeofencingRequest
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.PointOfInterest
+import com.udacity.project4.Constants
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseViewModel
 import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
+import com.udacity.project4.locationreminders.geofence.GeofenceBroadcastReceiver
 import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSource) :
     BaseViewModel(app) {
+
+    private lateinit var geofencingClient: GeofencingClient
+    private val geofencePendingIntent: PendingIntent by lazy {
+        val intent = Intent(app.applicationContext, GeofenceBroadcastReceiver::class.java)
+        intent.action = Constants.ACTION_GEOFENCE_EVENT
+        PendingIntent.getBroadcast(app.applicationContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+    }
+
     val reminderTitle = MutableLiveData<String?>()
     val reminderDescription = MutableLiveData<String?>()
     val reminderSelectedLocationStr = MutableLiveData<String?>()
@@ -39,6 +56,37 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     fun validateAndSaveReminder(reminderData: ReminderDataItem) {
         if (validateEnteredData(reminderData)) {
             saveReminder(reminderData)
+            addGeofence(reminderData)
+        }
+    }
+
+    private fun addGeofence(reminder: ReminderDataItem) {
+        geofencingClient = LocationServices.getGeofencingClient(app.applicationContext)
+        val geofence = Geofence.Builder()
+            .setRequestId(reminder.id)
+            .setCircularRegion(reminder.latitude!!, reminder.longitude!!, Constants.GEOFENCE_RADIUS)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+            .build()
+        val geofencingRequest = GeofencingRequest.Builder()
+            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            .addGeofence(geofence)
+            .build()
+        try {
+            geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
+                addOnSuccessListener {
+                    showToast.value = app.getString(R.string.geofence_added)
+                    Timber.i("Add Geofence ${geofence.requestId}")
+                }
+                addOnFailureListener {
+                    showToast.value = app.getString(R.string.geofences_not_added)
+                    if (it.message != null) {
+                        showToast.value = app.getString(R.string.geofences_not_added)
+                        Timber.w(it.message)
+                    }
+                }
+            }
+        } catch (e: SecurityException) {
+            Timber.e("user permissions not sufficient: ${e.message}")
         }
     }
 

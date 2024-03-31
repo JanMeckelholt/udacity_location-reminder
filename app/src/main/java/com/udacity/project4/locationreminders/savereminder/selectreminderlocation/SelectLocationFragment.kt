@@ -60,8 +60,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
-        val mapFragment = childFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
+        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
 
@@ -73,23 +72,24 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         // TODO: call this function after the user confirms on the selected location
 
         binding.btnSave.setOnClickListener {
-            AlertDialog.Builder(requireContext())
-                .setTitle("Save POI")
-                .setMessage("Do you want to save POI ${_viewModel.selectedPOI.value?.name}?")
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    _viewModel.showToast.value = getString(R.string.location_selected, _viewModel.selectedPOI.value?.name)
-                    findNavController().navigateUp()
-                }
-                .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                    _viewModel.selectedPOI.value = null
-                    marker?.remove()
-                    marker = null
-                    dialog.dismiss()
-                }
-                .setIcon(android.R.drawable.ic_dialog_info)
-                .show()
+            if (_viewModel.selectedPOI.value == null) {
+                _viewModel.showToast.value = getString(R.string.err_select_location)
+            } else {
+                AlertDialog.Builder(requireContext()).setTitle("Save POI")
+                    .setMessage("Do you want to save POI ${_viewModel.selectedPOI.value?.name}?")
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        _viewModel.showToast.value = getString(
+                            R.string.location_selected, _viewModel.selectedPOI.value?.name
+                        )
+                        findNavController().navigateUp()
+                    }.setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                        _viewModel.selectedPOI.value = null
+                        marker?.remove()
+                        marker = null
+                        dialog.dismiss()
+                    }.setIcon(android.R.drawable.ic_dialog_info).show()
+            }
         }
-
         return binding.root
     }
 
@@ -134,16 +134,17 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         setMapStyle(map)
         val zoomLevel = 15f
         enableMyLocation()
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener(requireActivity(), OnSuccessListener<Location?> { location ->
-                if (location != null) {
-                    val here = LatLng(location.latitude, location.longitude)
-                    map.addMarker(MarkerOptions().position(here).title("I am here"))
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(here, zoomLevel))
-                    setPoiClick(map)
-                    _viewModel.showSnackBar.value = getString(R.string.select_poi)
-                }
-            })
+        fusedLocationClient.lastLocation.addOnSuccessListener(
+                requireActivity(),
+                OnSuccessListener<Location?> { location ->
+                    if (location != null) {
+                        val here = LatLng(location.latitude, location.longitude)
+                        map.addMarker(MarkerOptions().position(here).title("I am here"))
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(here, zoomLevel))
+                        setPoiClick(map)
+                        _viewModel.showSnackBar.value = getString(R.string.select_poi)
+                    }
+                })
     }
 
     private fun setMapStyle(map: GoogleMap) {
@@ -160,9 +161,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     private fun enableMyLocation() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
@@ -180,16 +182,16 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             marker?.remove()
             marker = null
             marker = map.addMarker(
-                MarkerOptions()
-                    .position(poi.latLng)
-                    .title(poi.name)
+                MarkerOptions().position(poi.latLng).title(poi.name)
             )
             marker?.showInfoWindow()
             onLocationSelected(poi)
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == Companion.REQUEST_LOCATION_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
