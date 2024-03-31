@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
+import com.google.android.gms.ads.MobileAds
 import com.udacity.project4.databinding.ActivityRemindersBinding
+
 
 /**
  * The RemindersActivity that holds the reminders fragments
@@ -17,6 +19,9 @@ class RemindersActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityRemindersBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        MobileAds.initialize(
+            this
+        ) { }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

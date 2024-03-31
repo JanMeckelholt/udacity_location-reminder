@@ -7,6 +7,7 @@
     <string name="reminder_desc">Description</string>
     <string name="reminder_location">Reminder Location</string>
     <string name="save">Save</string>
+    <string name="back">Back</string>
     <string name="reminder_saved">Reminder Saved!</string>
     <string name="location_selected">%s selected</string>
     <string name="logout">Logout</string>
