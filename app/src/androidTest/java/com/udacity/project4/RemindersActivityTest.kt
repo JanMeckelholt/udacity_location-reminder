@@ -1,16 +1,38 @@
 package com.udacity.project4
 
+import android.Manifest
 import android.app.Application
+import android.os.Build
+import android.view.View
+import android.widget.TextView
+import androidx.navigation.fragment.NavHostFragment
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider.getApplicationContext
+import androidx.test.espresso.Espresso
+import androidx.test.espresso.UiController
+import androidx.test.espresso.ViewAction
+import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.assertion.ViewAssertions
+import androidx.test.espresso.matcher.ViewMatchers
+import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import androidx.test.rule.GrantPermissionRule
+import com.udacity.project4.locationreminders.RemindersActivity
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.local.LocalDB
 import com.udacity.project4.locationreminders.data.local.RemindersLocalRepository
 import com.udacity.project4.locationreminders.reminderslist.RemindersListViewModel
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
+import com.udacity.project4.util.DataBindingIdlingResource
+import com.udacity.project4.util.monitorActivity
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import org.hamcrest.CoreMatchers
+import org.hamcrest.Matcher
 import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.context.startKoin
@@ -27,6 +49,26 @@ class RemindersActivityTest :
 
     private lateinit var repository: ReminderDataSource
     private lateinit var appContext: Application
+
+    private val dataBindingIdlingResource = DataBindingIdlingResource()
+
+    companion object {
+        val permissions = arrayOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    }
+
+    @JvmField
+    @Rule
+    val permissionRule: GrantPermissionRule =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            GrantPermissionRule.grant(*permissions, Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            GrantPermissionRule.grant(*permissions)
+        }
+
 
     /**
      * As we use Koin as a Service Locator Library to develop our code, we'll also use Koin to test our code.
@@ -66,6 +108,45 @@ class RemindersActivityTest :
     }
 
 
-//    TODO: add End to End testing to the app
+    @Test
+    fun addReminder_displayInUi() = runTest {
+        val activityScenario = ActivityScenario.launch(RemindersActivity::class.java)
+        dataBindingIdlingResource.monitorActivity(activityScenario)
+        activityScenario.onActivity {
+            val navHostFragment = it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+            val navController = navHostFragment.navController
+           navController.navigate(R.id.welcomeFragment_to_reminderListFragment)
+        }
+        Espresso.onView(withId(R.id.addReminderFAB)).perform(ViewActions.click())
+        Espresso.onView(withId(R.id.reminderTitle))
+            .perform(ViewActions.replaceText("Added TITLE"))
+        Espresso.onView(withId(R.id.reminderDescription))
+            .perform(ViewActions.replaceText("Added DESCRIPTION"))
+        Espresso.onView(withId(R.id.selectedLocation))
+            .perform(setTextInTextView("Added LOCATION"))
+        Espresso.onView(withId(R.id.saveReminder)).perform(ViewActions.click())
+        Espresso.onView(ViewMatchers.withText("Added TITLE"))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()))
+        Espresso.onView(ViewMatchers.withText("Added DESCRIPTION"))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()))
+        Espresso.onView(ViewMatchers.withText("Added LOCATION"))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()))
+        activityScenario.close()
+    }
+    fun setTextInTextView(value: String): ViewAction {
+        return object : ViewAction {
+            override fun getConstraints(): Matcher<View> {
+            return CoreMatchers.allOf(ViewMatchers.isAssignableFrom(TextView::class.java))
+            }
 
+            override fun perform(uiController: UiController, view: View) {
+                (view as TextView).text = value
+            }
+
+            override fun getDescription(): String {
+                return "replace text"
+            }
+        }
+    }
 }
+

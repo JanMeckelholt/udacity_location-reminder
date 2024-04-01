@@ -3,6 +3,7 @@ package com.udacity.project4.locationreminders.reminderslist
 import FakeAndroidTestRepository
 import android.os.Build
 import android.os.Bundle
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
@@ -45,16 +46,15 @@ import org.mockito.Mockito.verify
 @MediumTest
 class ReminderListFragmentTest : KoinTest {
 
-//    TODO: test the navigation of the fragments.
-//    TODO: test the displayed data on the UI.
-//    TODO: add testing for the error messages.
-companion object{
-    val permissions = arrayOf(
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-        android.Manifest.permission.ACCESS_COARSE_LOCATION
-    )
-}
+    private val viewModel : RemindersListViewModel by inject()
+
+    companion object {
+        val permissions = arrayOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    }
 
     @JvmField
     @Rule
@@ -65,10 +65,13 @@ companion object{
             grant(*permissions)
         }
 
-    val repository : ReminderDataSource by inject()
+    @get:Rule
+    var instantExecutorRule = InstantTaskExecutorRule()
+
+    val repository: ReminderDataSource by inject()
 
     val testReminder1 = ReminderDTO("title1", "desc1", "loc1", 38.0, -111.33, "uuid1")
-    val testReminder2 = ReminderDTO("title2", "desc2", "loc1", 18.0, -120.33, "uuid2")
+    val testReminder2 = ReminderDTO("title2", "desc2", "loc2", 18.0, -120.33, "uuid2")
 
     @Before
     fun initRepository() {
@@ -100,14 +103,46 @@ companion object{
         repository.saveReminder(testReminder2)
         launchFragmentInContainer<ReminderListFragment>(null, R.style.AppTheme)
         onView(withId(R.id.addReminderFAB)).check(ViewAssertions.matches(isDisplayed()))
-        onView(withId(R.id.reminderssRecyclerView)).check(ViewAssertions.matches(ViewMatchers.hasDescendant(ViewMatchers.withText(testReminder1.title))))
-        onView(withId(R.id.reminderssRecyclerView)).check(ViewAssertions.matches(ViewMatchers.hasDescendant(ViewMatchers.withText(testReminder1.description))))
-        onView(withId(R.id.reminderssRecyclerView)).check(ViewAssertions.matches(ViewMatchers.hasDescendant(ViewMatchers.withText(testReminder2.title))))
-        onView(withId(R.id.reminderssRecyclerView)).check(ViewAssertions.matches(ViewMatchers.hasDescendant(ViewMatchers.withText(testReminder2.description))))
+        onView(withId(R.id.reminderssRecyclerView)).check(
+            ViewAssertions.matches(
+                ViewMatchers.hasDescendant(
+                    ViewMatchers.withText(testReminder1.title)
+                )
+            )
+        )
+        onView(withId(R.id.reminderssRecyclerView)).check(
+            ViewAssertions.matches(
+                ViewMatchers.hasDescendant(
+                    ViewMatchers.withText(testReminder1.description)
+                )
+            )
+        )
+        onView(withId(R.id.reminderssRecyclerView)).check(
+            ViewAssertions.matches(
+                ViewMatchers.hasDescendant(
+                    ViewMatchers.withText(testReminder2.title)
+                )
+            )
+        )
+        onView(withId(R.id.reminderssRecyclerView)).check(
+            ViewAssertions.matches(
+                ViewMatchers.hasDescendant(
+                    ViewMatchers.withText(testReminder2.description)
+                )
+            )
+        )
     }
 
     @Test
-    fun clickAdd_navigateToSaveReminderFragmentOne() = runTest {
+    fun reminderList_ErrorMessageDisplayedInUi() = runTest {
+        viewModel.showErrorMessage.value = "Test Error"
+        launchFragmentInContainer<ReminderListFragment>(null, R.style.AppTheme)
+        onView(withId(R.id.noDataTextView)).check(ViewAssertions.matches(isDisplayed()))
+        onView(withId(R.id.noDataTextView)).check(ViewAssertions.matches(ViewMatchers.withText(R.string.no_data)))
+    }
+
+    @Test
+    fun clickAdd_navigateToSaveReminderFragment() = runTest {
         val scenario = launchFragmentInContainer<ReminderListFragment>(Bundle(), R.style.AppTheme)
         val navController = mock(NavController::class.java)
         scenario.onFragment {
