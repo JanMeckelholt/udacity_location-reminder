@@ -55,7 +55,7 @@ class SaveReminderViewModelTest {
     }
 
     @Test
-    fun loadTasks_loading() = runTest() {
+    fun validateAndSaveReminders_loading() = runTest() {
         saveReminderViewModel.validateAndSaveReminder(validReminder, false)
         Assert.assertTrue(saveReminderViewModel.showLoading.getOrAwaitValue())
         runCurrent()
@@ -63,7 +63,7 @@ class SaveReminderViewModelTest {
     }
 
     @Test
-    fun saveReminder_callErrorToDisplay() = runTest() {
+    fun validateAndSaveReminder_withError_showErrorMessage() = runTest() {
         saveReminderViewModel.validateAndSaveReminder(invalidReminder, false)
         runCurrent()
         Assert.assertNotNull(saveReminderViewModel.showErrorMessage)
