@@ -54,7 +54,7 @@ class SaveReminderFragment : BaseFragment() {
                 latitude = latitude,
                 longitude = longitude
             )
-            _viewModel.validateAndSaveReminder(reminder)
+            _viewModel.validateAndSaveReminder(reminder, true)
         }
     }
 
