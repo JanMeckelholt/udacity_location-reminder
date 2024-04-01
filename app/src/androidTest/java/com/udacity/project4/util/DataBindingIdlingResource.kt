@@ -48,7 +48,6 @@ class DataBindingIdlingResource : IdlingResource {
 
     override fun isIdleNow(): Boolean {
         val idle = !getBindings().any { it.hasPendingBindings() }
-        @Suppress("LiftReturnOrAssignment")
         if (idle) {
             if (wasNotIdle) {
                 // notify observers to avoid espresso race detector
@@ -104,8 +103,8 @@ fun DataBindingIdlingResource.monitorActivity(
 /**
  * Sets the fragment from a [FragmentScenario] to be used from [DataBindingIdlingResource].
  */
-fun DataBindingIdlingResource.monitorFragment(fragmentScenario: FragmentScenario<out Fragment>) {
-    fragmentScenario.onFragment {
-        this.activity = it.requireActivity()
+fun DataBindingIdlingResource.monitorFragment(fragmentScenario: FragmentScenario<Fragment>) {
+    fragmentScenario.onFragment { fragment ->
+        this.activity = fragment.requireActivity()
     }
 }
