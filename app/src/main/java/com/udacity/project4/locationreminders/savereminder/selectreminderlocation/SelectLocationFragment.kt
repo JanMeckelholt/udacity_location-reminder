@@ -13,6 +13,8 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.navigation.fragment.findNavController
@@ -22,6 +24,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
@@ -35,6 +38,7 @@ import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
 import timber.log.Timber
+import java.util.Locale
 
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
@@ -44,9 +48,11 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private lateinit var binding: FragmentSelectLocationBinding
     private lateinit var map: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var permissionLauncher : ActivityResultLauncher<String>
     private var marker: Marker? = null
 
 
+    @SuppressLint("MissingPermission")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -56,27 +62,28 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         binding.viewModel = _viewModel
         binding.lifecycleOwner = this
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-
+        permissionLauncher  = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                map.isMyLocationEnabled = true
+            }
+            else {
+                _viewModel.showErrorMessage.value = getString(R.string.permission_denied_explanation)
+            }
+        }
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-
-        // TODO: add the map setup implementation
-        // TODO: zoom to the user location after taking his permission
-        // TODO: add style to the map
-        // TODO: put a marker to location that the user selected
-
-        // TODO: call this function after the user confirms on the selected location
-
         binding.btnSave.setOnClickListener {
-            if (_viewModel.selectedPOI.value == null) {
+            if (marker == null)  {
                 _viewModel.showToast.value = getString(R.string.err_select_location)
             } else {
-                AlertDialog.Builder(requireContext()).setTitle("Save POI")
-                    .setMessage("Do you want to save POI ${_viewModel.selectedPOI.value?.name}?")
+                AlertDialog.Builder(requireContext()).setTitle("Save Location")
+                    .setMessage("Do you want to save the selected location?")
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         _viewModel.showToast.value = getString(
                             R.string.location_selected, _viewModel.selectedPOI.value?.name
@@ -98,6 +105,13 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         _viewModel.latitude.value = poi.latLng.latitude
         _viewModel.longitude.value = poi.latLng.longitude
         _viewModel.reminderSelectedLocationStr.value = poi.name
+    }
+
+    private fun onLocationSelected(latLng: LatLng, title: String) {
+        _viewModel.selectedPOI.value = null
+        _viewModel.latitude.value = latLng.latitude
+        _viewModel.longitude.value = latLng.longitude
+        _viewModel.reminderSelectedLocationStr.value = title
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -130,21 +144,22 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
+        var location = FALLBACK_LOCATION
         map = googleMap
         setMapStyle(map)
         val zoomLevel = 15f
         enableMyLocation()
         fusedLocationClient.lastLocation.addOnSuccessListener(
-                requireActivity(),
-                OnSuccessListener<Location?> { location ->
-                    if (location != null) {
-                        val here = LatLng(location.latitude, location.longitude)
-                        map.addMarker(MarkerOptions().position(here).title("I am here"))
-                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(here, zoomLevel))
-                        setPoiClick(map)
-                        _viewModel.showSnackBar.value = getString(R.string.select_poi)
-                    }
-                })
+            requireActivity(),
+            OnSuccessListener<Location?> { lastLocation ->
+                if (lastLocation != null) {
+                    location = LatLng(lastLocation.latitude, lastLocation.longitude)
+                    map.addMarker(MarkerOptions().position(location))
+                }
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoomLevel))
+                setPoiClick(map)
+                _viewModel.showSnackBar.value = getString(R.string.select_poi)
+            })
     }
 
     private fun setMapStyle(map: GoogleMap) {
@@ -167,14 +182,11 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                 requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf<String>(Manifest.permission.ACCESS_FINE_LOCATION),
-                Companion.REQUEST_LOCATION_PERMISSION
-            )
-            return
+            Timber.i("permissionLauncher to request Fine Location")
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            map.isMyLocationEnabled = true
         }
-        map.isMyLocationEnabled = true
     }
 
     private fun setPoiClick(map: GoogleMap) {
@@ -182,11 +194,33 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             marker?.remove()
             marker = null
             marker = map.addMarker(
-                MarkerOptions().position(poi.latLng).title(poi.name)
+                MarkerOptions()
+                    .position(poi.latLng)
+                    .title(poi.name)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
             )
             marker?.showInfoWindow()
             onLocationSelected(poi)
         }
+        map.setOnMapClickListener { latLng ->
+            marker?.remove()
+            marker = null
+            val snippet = String.format(
+                Locale.getDefault(),
+                "Lat: %1$.5f, Long: %2.5f",
+                latLng.latitude,
+                latLng.longitude
+            )
+            marker = map.addMarker(
+                MarkerOptions()
+                    .position(latLng)
+                    .title(snippet)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+            )
+            marker?.showInfoWindow()
+            onLocationSelected(latLng, snippet)
+        }
+
     }
 
     override fun onRequestPermissionsResult(
@@ -201,6 +235,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     companion object {
+
+        private const val LAT_MERCEDES_SINDELFINGEN = 48.703760052656605
+        private const val LNG_MERCEDES_SINDELFINGEN = 8.988854911984626
+        private val FALLBACK_LOCATION = LatLng(LAT_MERCEDES_SINDELFINGEN, LNG_MERCEDES_SINDELFINGEN)
         private const val REQUEST_LOCATION_PERMISSION = 1
     }
 }
