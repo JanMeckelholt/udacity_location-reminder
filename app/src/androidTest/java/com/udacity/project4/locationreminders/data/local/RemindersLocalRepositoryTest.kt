@@ -73,6 +73,18 @@ class RemindersLocalRepositoryTest {
     }
 
     @Test
+    fun getReminderWithNonExistentId_returnsError() = runTest {
+        localRepository.saveReminder(testReminder1)
+        localRepository.saveReminder(testReminder2)
+        val result = localRepository.getReminder("not_existing")
+        runCurrent()
+        Assert.assertTrue(result is Result.Error)
+        val errorMessage = (result as Result.Error).message
+        Assert.assertEquals("Reminder not found!", errorMessage)
+    }
+
+
+    @Test
     fun SaveAndDeleteAllReminders_retrieveEmptyList() = runTest {
         localRepository.saveReminder(testReminder1)
         localRepository.saveReminder(testReminder2)

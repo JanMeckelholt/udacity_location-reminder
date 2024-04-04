@@ -3,6 +3,7 @@ package com.udacity.project4.locationreminders.savereminder
 import android.app.Application
 import android.app.PendingIntent
 import android.content.Intent
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.Geofence
@@ -31,6 +32,22 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         PendingIntent.getBroadcast(app.applicationContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
     }
 
+    private var _locationIsEnabled = MutableLiveData<Boolean?>()
+    val locationIsEnabled: LiveData<Boolean?>
+        get() = _locationIsEnabled
+
+    fun setLocationIsEnabled(value : Boolean){
+        _locationIsEnabled.value = value
+    }
+
+    private var _backgroundLocationAccessGranted = MutableLiveData<Boolean?>()
+    val backgroundLocationAccessGranted: LiveData<Boolean?>
+        get() = _backgroundLocationAccessGranted
+
+    fun setBackgroundLocationAccessGranted(value : Boolean){
+        _backgroundLocationAccessGranted.value = value
+    }
+
     val reminderTitle = MutableLiveData<String?>()
     val reminderDescription = MutableLiveData<String?>()
     val reminderSelectedLocationStr = MutableLiveData<String?>()
@@ -38,6 +55,9 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     val latitude = MutableLiveData<Double?>()
     val longitude = MutableLiveData<Double?>()
 
+    init {
+        _locationIsEnabled.value = null
+    }
     /**
      * Clear the live data objects to start fresh next time the view model gets called
      */
