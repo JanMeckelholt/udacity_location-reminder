@@ -1,10 +1,10 @@
 package com.udacity.project4.base
 
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
+import org.koin.android.ext.android.inject
 
 /**
  * Base Fragment to observe on the common LiveData objects
@@ -16,13 +16,15 @@ abstract class BaseFragment : Fragment() {
      */
     abstract val _viewModel: BaseViewModel
 
+    private val _toaster : Toaster by inject ()
+
     override fun onStart() {
         super.onStart()
         _viewModel.showErrorMessage.observe(this, Observer {
-            Toast.makeText(activity, it, Toast.LENGTH_LONG).show()
+            _toaster.showToast(it)
         })
         _viewModel.showToast.observe(this, Observer {
-            Toast.makeText(activity, it, Toast.LENGTH_LONG).show()
+           _toaster.showToast(it)
         })
         _viewModel.showSnackBar.observe(this, Observer {
             Snackbar.make(this.requireView(), it, Snackbar.LENGTH_LONG).show()

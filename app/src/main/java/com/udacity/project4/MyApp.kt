@@ -1,5 +1,6 @@
 package com.udacity.project4
 
+import com.udacity.project4.base.ToastModule
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.local.LocalDB
 import com.udacity.project4.locationreminders.data.local.RemindersLocalRepository
@@ -36,6 +37,7 @@ class MyApp : BaseAppliction() {
 			}
 			single { RemindersLocalRepository(get()) as ReminderDataSource }
 			single { LocalDB.createRemindersDao(this@MyApp) }
+			single { ToastModule.providesToaster(this@MyApp) }
 		}
 
 		startKoin {
