@@ -33,6 +33,7 @@ class RemindersListViewModelTest {
 
     // Subject under test
     private lateinit var remindersListViewModel: RemindersListViewModel
+    private lateinit var fakeDataSource: FakeDataSource
 
     private val testReminder1 = ReminderDTO("title1", "desc1", "loc1", 38.0, -111.33, "uuid1")
     private val testReminder2 = ReminderDTO("title2", "desc2", "loc1", 18.0, -120.33, "uuid2")
@@ -40,10 +41,9 @@ class RemindersListViewModelTest {
     @Before
     fun setupRemindersListViewModel() {
         val application = Mockito.mock(Application::class.java)
-        val fakeDataSource = FakeDataSource(mutableListOf(testReminder1, testReminder2))
+        fakeDataSource = FakeDataSource(mutableListOf(testReminder1, testReminder2))
         remindersListViewModel = RemindersListViewModel(application, fakeDataSource)
-        remindersListViewModel.setGeofenceActive(false)
-
+        remindersListViewModel.showSnackBar.value = null
     }
 
     @After
@@ -60,15 +60,12 @@ class RemindersListViewModelTest {
     }
 
     @Test
-    fun setGeofenceActive_geofenceActive() = runTest() {
-        val statusBefore = remindersListViewModel.geofenceIsActive.getOrAwaitValue()
-        Assert.assertNotNull(statusBefore)
-        Assert.assertFalse(statusBefore!!)
+    fun loadReminders_returnsError() = runTest() {
+        fakeDataSource.setReturnError(true)
+        remindersListViewModel.loadReminders()
         runCurrent()
-        remindersListViewModel.setGeofenceActive(true)
-        val statusAfter = remindersListViewModel.geofenceIsActive.getOrAwaitValue()
-        Assert.assertNotNull(statusAfter)
-        Assert.assertTrue(statusAfter!!)
+        Assert.assertNotNull(remindersListViewModel.showSnackBar.getOrAwaitValue())
+        Assert.assertEquals("Test Exception",remindersListViewModel.showSnackBar.getOrAwaitValue())
     }
 
     @Test

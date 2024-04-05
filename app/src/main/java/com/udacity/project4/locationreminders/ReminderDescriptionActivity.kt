@@ -41,5 +41,8 @@ class ReminderDescriptionActivity : AppCompatActivity() {
         }
         binding.reminderDataItem = reminder
         binding.executePendingBindings()
+        binding.btnOk.setOnClickListener {
+            finish()
+        }
     }
 }
