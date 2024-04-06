@@ -3,13 +3,16 @@ package com.udacity.project4
 import android.Manifest
 import android.app.Application
 import android.os.Build
+import android.os.IBinder
 import android.view.View
+import android.view.WindowManager
 import android.widget.TextView
 import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider.getApplicationContext
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.IdlingRegistry
+import androidx.test.espresso.Root
 import androidx.test.espresso.UiController
 import androidx.test.espresso.ViewAction
 import androidx.test.espresso.action.ViewActions
@@ -23,6 +26,7 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.rule.GrantPermissionRule
+import com.udacity.project4.base.ToastModule
 import com.udacity.project4.locationreminders.RemindersActivity
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.local.LocalDB
@@ -37,7 +41,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.hamcrest.CoreMatchers
+import org.hamcrest.Description
 import org.hamcrest.Matcher
+import org.hamcrest.TypeSafeMatcher
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -50,6 +56,7 @@ import org.koin.dsl.module
 import org.koin.test.AutoCloseKoinTest
 import org.koin.test.get
 import org.koin.test.inject
+import timber.log.Timber
 import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
@@ -70,6 +77,11 @@ class RemindersActivityTest :
             android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        //Espresso-Test for Toastmessage are flaky.
+        //It is recommended to use FakeToaster.
+        //For SKD-Version >=30 Espresso does not work for Toast test
+        //https://github.com/android/android-test/issues/803
+        const val useFakeToaster = false
     }
 
     @get:Rule
@@ -110,7 +122,14 @@ class RemindersActivityTest :
             }
             single { RemindersLocalRepository(get()) as ReminderDataSource }
             single { LocalDB.createRemindersDao(appContext) }
-            single { FakeToaster.providesToaster(appContext) }
+            if (useFakeToaster || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+                //For SKD-Version >=30 Espresso does not work for Toast test
+                //https://github.com/android/android-test/issues/803
+                single { FakeToaster.providesToaster(appContext) }
+            } else {
+                single { ToastModule.providesToaster(appContext) }
+            }
+
         }
         //declare a new koin module
         startKoin {
@@ -168,14 +187,25 @@ class RemindersActivityTest :
             .perform(ViewActions.replaceText(descStr))
         onView(withId(R.id.selectedLocation))
             .perform(setTextInTextView(locStr))
-        onView(withId(R.id.saveReminder)).perform(ViewActions.click())
+       onView(withId(R.id.saveReminder)).perform(ViewActions.click())
         onView(withText(titleStr))
             .check(ViewAssertions.matches(isDisplayed()))
         onView(withText(descStr))
             .check(ViewAssertions.matches(isDisplayed()))
         onView(withText(locStr))
             .check(ViewAssertions.matches(isDisplayed()))
-        assertEquals(appContext.getString(R.string.reminder_saved), FakeToaster.toasts[0])
+
+        if (useFakeToaster || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            //For SKD-Version >=30 Espresso does not work for Toast test
+            //https://github.com/android/android-test/issues/803
+            assertEquals(appContext.getString(R.string.reminder_saved), FakeToaster.toasts[0])
+        } else  {
+            val toastStr = appContext.getString(R.string.reminder_saved)
+            Timber.i("using real Toaster, looking for $toastStr")
+            onView(withText(toastStr))
+                .inRoot(ToastMatcher())
+                .check(matches(isDisplayed()));
+        }
         activityScenario.close()
     }
 
@@ -222,4 +252,27 @@ class RemindersActivityTest :
             }
         }
     }
+}
+
+// adapted from https://stackoverflow.com/questions/28390574/checking-toast-message-in-android-espresso
+class ToastMatcher : TypeSafeMatcher<Root?>() {
+    override fun matchesSafely(item: Root?): Boolean {
+        val type: Int? = item?.windowLayoutParams?.get()?.type
+        Timber.i("type: $type")
+        if (type != WindowManager.LayoutParams.TYPE_APPLICATION && type !=1) {
+        //if (type == WindowManager.LayoutParams.TYPE_TOAST || type == WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY) {
+            Timber.i("found Toast $type")
+            val windowToken: IBinder = item!!.decorView.windowToken
+            val appToken: IBinder = item!!.decorView.applicationWindowToken
+            if (windowToken === appToken) { // means this window isn't contained by any other windows.
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun describeTo(description: Description?) {
+        description?.appendText("is toast")
+    }
+
 }
